@@ -17,8 +17,8 @@ type GalleryPageResult struct {
 	List       []entity.Gallery `json:"list"`
 	Total      int64            `json:"total"`
 	Page       int              `json:"page"`
-	PageSize   int              `json:"page_size"`
-	TotalPages int64            `json:"total_pages"`
+	PageSize   int              `json:"pageSize"`
+	TotalPages int64            `json:"totalPages"`
 }
 
 // galleryInfo 单条图库记录的缓存载荷，同时服务于存在性校验与 url 查询。

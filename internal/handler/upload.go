@@ -20,7 +20,7 @@ func NewUploadHandler(svc service.UploadService) *UploadHandler {
 
 // Upload 处理 multipart 文件上传。
 // 路径参数 :source 指定对象存储源（yml 中 storage.sources 的 key）；
-// 表单字段：file（必填）、bucket（可选，缺省用源的 default-bucket）、object_key（可选）。
+// 表单字段：file（必填）、bucket（可选，缺省用源的 default-bucket）、objectKey（可选）。
 func (h *UploadHandler) Upload(c *gin.Context) {
 	fh, err := c.FormFile("file")
 	if err != nil {
@@ -35,7 +35,7 @@ func (h *UploadHandler) Upload(c *gin.Context) {
 	}
 	defer f.Close()
 
-	resp, err := h.svc.Upload(c.Request.Context(), c.Param("source"), c.PostForm("bucket"), c.PostForm("object_key"), provider.UploadInput{
+	resp, err := h.svc.Upload(c.Request.Context(), c.Param("source"), c.PostForm("bucket"), c.PostForm("objectKey"), provider.UploadInput{
 		FileName:    fh.Filename,
 		Reader:      f,
 		Size:        fh.Size,

@@ -23,14 +23,14 @@ func NewGalleryHandler(svc service.GalleryService) *GalleryHandler {
 }
 
 // ListPage 分页查询 gallery 表。
-// 入参：page（页码，必填，从 1 开始）、page_size（页大小，必填，正整数）。
+// 入参：page（页码，必填，从 1 开始）、pageSize（页大小，必填，正整数）。
 func (h *GalleryHandler) ListPage(c *gin.Context) {
 	page, err := strconv.Atoi(c.Query("page"))
 	if err != nil || page < 1 {
 		response.Fail(c, ecode.InvalidParam)
 		return
 	}
-	pageSize, err := strconv.Atoi(c.Query("page_size"))
+	pageSize, err := strconv.Atoi(c.Query("pageSize"))
 	if err != nil || pageSize < 1 {
 		response.Fail(c, ecode.InvalidParam)
 		return

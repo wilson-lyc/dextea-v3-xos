@@ -21,7 +21,7 @@ Content-Type: multipart/form-data
 | --- | --- | --- | --- |
 | `file` | file | 是 | 要上传的文件 |
 | `bucket` | string | 否 | 目标桶。不传时使用该存储源配置的默认桶 |
-| `object_key` | string | 否 | 文件的存储路径（如 `img/2026/banner.png`）。不传时由系统自动生成，格式为 `日期/时间戳_原文件名`，例如 `2026/09/06/1788659034105780934_banner.png` |
+| `objectKey` | string | 否 | 文件的存储路径（如 `img/2026/banner.png`）。不传时由系统自动生成，格式为 `日期/时间戳_原文件名`，例如 `2026/09/06/1788659034105780934_banner.png` |
 
 ## 响应
 
@@ -30,7 +30,7 @@ Content-Type: multipart/form-data
 ```json
 {
   "bucket": "gin-quickstart-dev",
-  "object_key": "2026/09/06/1788659034105780934_go.mod",
+  "objectKey": "2026/09/06/1788659034105780934_go.mod",
   "size": 1568,
   "etag": "d41d8cd98f00b204e9800998ecf8427e"
 }
@@ -39,7 +39,7 @@ Content-Type: multipart/form-data
 | 字段 | 说明 |
 | --- | --- |
 | `bucket` | 文件实际落入的桶 |
-| `object_key` | 文件在桶中的完整路径。后续下载、删除接口均以 `bucket + object_key` 定位文件，请妥善保存 |
+| `objectKey` | 文件在桶中的完整路径。后续下载、删除接口均以 `bucket + objectKey` 定位文件，请妥善保存 |
 | `size` | 文件大小（字节） |
 | `etag` | 文件内容指纹（MD5），可用于校验上传完整性 |
 
@@ -66,13 +66,13 @@ curl -X POST http://localhost:8080/api/v1/storage/minio-dev/objects \
 curl -X POST http://localhost:8080/api/v1/storage/minio-dev/objects \
   -F "file=@/path/to/banner.png" \
   -F "bucket=my-bucket" \
-  -F "object_key=img/2026/banner.png"
+  -F "objectKey=img/2026/banner.png"
 ```
 
 ## 注意事项
 
 1. **`source` 必须是平台已配置的存储源名称**，拼写错误会返回 500 并提示 unknown storage source。
-2. 不传 `object_key` 时系统生成的路径包含纳秒级时间戳，**重复上传同名文件不会被覆盖**；如需覆盖旧文件，请显式传入固定的 `object_key`。
-3. `object_key` 中可使用 `/` 分隔多级目录，但请勿以 `/` 开头，也不要包含 `..`。
+2. 不传 `objectKey` 时系统生成的路径包含纳秒级时间戳，**重复上传同名文件不会被覆盖**；如需覆盖旧文件，请显式传入固定的 `objectKey`。
+3. `objectKey` 中可使用 `/` 分隔多级目录，但请勿以 `/` 开头，也不要包含 `..`。
 4. 请自行评估文件大小限制与业务侧的合法性校验（如文件类型、数量）；平台当前未做类型白名单限制。
 5. 排查问题时请携带响应头 `X-Request-ID` 联系平台管理员。
