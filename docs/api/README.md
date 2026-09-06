@@ -5,7 +5,9 @@
 ## 目录
 
 - [文件上传](./upload.md)
-- [图库](./gallery.md)
+- [分页查询图库](./gallery-list.md)
+- [删除图库记录](./gallery-delete.md)
+- [校验图库 id 是否合法](./gallery-valid.md)
 
 ## 通用约定
 
