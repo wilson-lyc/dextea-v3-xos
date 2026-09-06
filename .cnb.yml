@@ -3,7 +3,7 @@
 $:
   vscode:
     - runner:
-        cpus: 4
+        cpus: 2
       docker:
         # 用仓库内的 Dockerfile 构建开发环境镜像；镜像按内容哈希缓存并复用，
         # .ide/Dockerfile 未变更时不会重复构建
