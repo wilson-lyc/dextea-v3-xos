@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/spf13/viper"
 )
@@ -12,8 +13,22 @@ import (
 type Config struct {
 	Server    ServerConfig    `mapstructure:"server"`
 	Database  DatabaseConfig  `mapstructure:"database"`
+	Redis     RedisConfig     `mapstructure:"redis"`
 	Storage   StorageConfig   `mapstructure:"storage"`
 	Telemetry TelemetryConfig `mapstructure:"telemetry"`
+}
+
+// RedisConfig Redis 连接与缓存配置。
+type RedisConfig struct {
+	Host     string        `mapstructure:"host"`
+	Port     string        `mapstructure:"port"`
+	Password string        `mapstructure:"password"`
+	DB       int           `mapstructure:"db"`
+	TTL      time.Duration `mapstructure:"gallery-ttl"` // 图库缓存过期时间，如 "10m"
+}
+
+func (r RedisConfig) Addr() string {
+	return r.Host + ":" + r.Port
 }
 
 // TelemetryConfig OpenTelemetry 配置，导出端点走标准 OTEL_EXPORTER_OTLP_ENDPOINT 环境变量
@@ -49,8 +64,8 @@ type StorageConfig struct {
 
 // SourceSpec 单个对象存储源的配置，统一 S3 协议接入。
 type SourceSpec struct {
-	Vendor        string `mapstructure:"vendor"`         // 厂商标识：minio / aws-s3 / aliyun-oss ...
-	Endpoint      string `mapstructure:"endpoint"`       // 不带 http(s) 前缀
+	Vendor        string `mapstructure:"vendor"`   // 厂商标识：minio / aws-s3 / aliyun-oss ...
+	Endpoint      string `mapstructure:"endpoint"` // 不带 http(s) 前缀
 	Region        string `mapstructure:"region"`
 	AccessKey     string `mapstructure:"access-key"`
 	SecretKey     string `mapstructure:"secret-key"`
@@ -89,6 +104,15 @@ func Load() (*Config, error) {
 	}
 	if cfg.Telemetry.ServiceName == "" {
 		cfg.Telemetry.ServiceName = "gin-quickstart"
+	}
+	if cfg.Redis.Host == "" {
+		cfg.Redis.Host = "127.0.0.1"
+	}
+	if cfg.Redis.Port == "" {
+		cfg.Redis.Port = "6379"
+	}
+	if cfg.Redis.TTL == 0 {
+		cfg.Redis.TTL = 10 * time.Minute
 	}
 	if len(cfg.Storage.Sources) == 0 {
 		return nil, fmt.Errorf("no storage sources configured")

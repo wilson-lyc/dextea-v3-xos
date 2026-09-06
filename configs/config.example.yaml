@@ -6,7 +6,7 @@ server:
   port: "8080"
   mode: debug   # debug / release / test
 
-# MySQL 配置（图库表 gallery 所在库）
+# MySQL
 database:
   host: 127.0.0.1
   port: "3306"
@@ -14,8 +14,15 @@ database:
   password: "123456"
   name: gin_quickstart
 
-# 对象存储源配置：key 为存储源名称（业务方调用接口时指定），支持配置多个
-# vendor 仅作为标识备注，所有源统一走 S3 协议接入
+# Redis
+redis:
+  host: 127.0.0.1
+  port: "6379"
+  password: ""
+  db: 0
+  gallery-ttl: 10m   # 图库缓存过期时间
+
+# 对象存储源：key 为存储源名称，业务方调用上传接口时指定
 storage:
   sources:
     minio-dev:
@@ -27,12 +34,9 @@ storage:
       use-ssl: false
       default-bucket: gin-quickstart-dev
 
-# OpenTelemetry 链路追踪配置
-# OTLP 导出端点等通过标准 OTEL_* 环境变量配置：
-#   OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318   # OTLP/HTTP endpoint
-#   OTEL_EXPORTER_OTLP_HEADERS=authorization=Bearer xxx # 可选，附加请求头
-#   OTEL_RESOURCE_ATTRIBUTES=deployment.environment=prod # 可选，追加资源属性
+# OpenTelemetry 链路追踪
+# OTLP 导出端点等通过标准 OTEL_* 环境变量配置
 telemetry:
   enable: true
-  service-name: gin-quickstart      # 留空时默认为 gin-quickstart
+  service-name: gin-quickstart
   service-version: 0.1.0

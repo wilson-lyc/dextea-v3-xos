@@ -6,6 +6,7 @@ import (
 	"path"
 	"time"
 
+	"gin-quickstart/internal/cache"
 	"gin-quickstart/internal/config"
 	"gin-quickstart/internal/dto"
 	"gin-quickstart/internal/entity"
@@ -22,11 +23,12 @@ type uploadService struct {
 	providers   map[string]provider.ObjectProvider // key 为存储源名称
 	specs       map[string]config.SourceSpec
 	galleryRepo repository.GalleryRepository
+	cache       *cache.Cache // 用于上传落库后失效图库列表缓存
 }
 
 // NewUploadService 初始化所有存储源的 provider 并绑定图库落库。
 // 协议固定为 s3；后续接入非 S3 协议厂商时，可依据 spec.Vendor/新增协议字段路由到不同 provider。
-func NewUploadService(sources map[string]config.SourceSpec, galleryRepo repository.GalleryRepository) (UploadService, error) {
+func NewUploadService(sources map[string]config.SourceSpec, galleryRepo repository.GalleryRepository, c *cache.Cache) (UploadService, error) {
 	providers := make(map[string]provider.ObjectProvider, len(sources))
 	for name, spec := range sources {
 		// 当前所有源统一走 S3 协议；扩展点：按 spec 声明的协议选择 provider
@@ -40,6 +42,7 @@ func NewUploadService(sources map[string]config.SourceSpec, galleryRepo reposito
 		providers:   providers,
 		specs:       sources,
 		galleryRepo: galleryRepo,
+		cache:       c,
 	}, nil
 }
 
@@ -69,6 +72,11 @@ func (s *uploadService) Upload(ctx context.Context, source, bucket, objectKey st
 		Name:      path.Base(in.FileName),
 	}); err != nil {
 		fmt.Printf("[WARN] gallery insert failed, bucket=%s key=%s: %v\n", res.Bucket, res.ObjectKey, err)
+	} else {
+		// 旁路缓存的写后失效：新增记录会使分页列表（尤其是首页）过期
+		if err := s.cache.Del(ctx, listVerKey); err != nil {
+			fmt.Printf("[WARN] invalidate gallery list cache failed: %v\n", err)
+		}
 	}
 
 	return &dto.UploadResp{
