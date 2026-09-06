@@ -21,6 +21,7 @@ type GalleryPageResult struct {
 type GalleryService interface {
 	ListPage(ctx context.Context, page, pageSize int) (*GalleryPageResult, error)
 	Delete(ctx context.Context, id int64) error
+	ValidateID(ctx context.Context, id int64) (bool, error)
 }
 
 type galleryService struct {
@@ -57,4 +58,9 @@ func (s *galleryService) Delete(ctx context.Context, id int64) error {
 		return ecode.NotFound
 	}
 	return nil
+}
+
+// ValidateID 校验 id 是否合法，即 gallery 表中是否存在该记录。
+func (s *galleryService) ValidateID(ctx context.Context, id int64) (bool, error) {
+	return s.repo.Exists(ctx, id)
 }

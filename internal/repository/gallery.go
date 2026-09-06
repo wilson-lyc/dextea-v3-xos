@@ -12,6 +12,7 @@ type GalleryRepository interface {
 	Create(ctx context.Context, g *entity.Gallery) (int64, error)
 	ListPage(ctx context.Context, page, pageSize int) ([]entity.Gallery, int64, error)
 	Delete(ctx context.Context, id int64) (int64, error)
+	Exists(ctx context.Context, id int64) (bool, error)
 }
 
 type galleryRepository struct {
@@ -67,4 +68,13 @@ func (r *galleryRepository) Delete(ctx context.Context, id int64) (int64, error)
 		return 0, err
 	}
 	return res.RowsAffected()
+}
+
+// Exists 检查指定 id 的 gallery 记录是否存在。
+func (r *galleryRepository) Exists(ctx context.Context, id int64) (bool, error) {
+	var exists bool
+	err := r.db.QueryRowContext(ctx,
+		"SELECT EXISTS(SELECT 1 FROM gallery WHERE id = ?)", id,
+	).Scan(&exists)
+	return exists, err
 }

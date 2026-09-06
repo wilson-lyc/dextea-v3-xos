@@ -53,6 +53,7 @@ func Setup(cfg *config.Config) (*gin.Engine, error) {
 		api.POST("/storage/:source/objects", uploadHandler.Upload)
 		api.GET("/gallery", galleryHandler.ListPage)
 		api.DELETE("/gallery/:id", galleryHandler.Delete)
+		api.GET("/gallery/:id/valid", galleryHandler.ValidateID)
 	}
 
 	return r, nil

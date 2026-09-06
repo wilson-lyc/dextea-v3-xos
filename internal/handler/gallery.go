@@ -55,3 +55,20 @@ func (h *GalleryHandler) Delete(c *gin.Context) {
 	}
 	response.OK(c, nil)
 }
+
+// ValidateID 校验 id 是否合法，路径参数 :id 为待校验的主键。
+// 合法（记录存在）返回 data: {valid: true}，不存在返回 {valid: false}。
+func (h *GalleryHandler) ValidateID(c *gin.Context) {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil || id < 1 {
+		response.Fail(c, ecode.InvalidParam)
+		return
+	}
+
+	valid, err := h.svc.ValidateID(c.Request.Context(), id)
+	if err != nil {
+		response.Err(c, err)
+		return
+	}
+	response.OK(c, gin.H{"id": id, "valid": valid})
+}
