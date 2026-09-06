@@ -5,9 +5,10 @@
 ## 目录
 
 - [文件上传](./upload.md)
-- [分页查询图库](./gallery-list.md)
-- [删除图库记录](./gallery-delete.md)
-- [校验图库 id 是否合法](./gallery-valid.md)
+- [分页查询图库](./gallery/list-gallery.md)
+- [删除图库记录](./gallery/delete-gallery.md)
+- [校验图库 id 是否合法](./gallery/validate-gallery-id.md)
+- [批量根据 id 查询 url](./gallery/get-gallery-urls.md)
 
 ## 通用约定
 
@@ -44,3 +45,4 @@ http://<服务地址>:8080/api/v1
 | 50000 | 服务端内部错误 |
 
 HTTP 状态码遵循标准语义：200 成功、400 参数错误、404 资源不存在、500 服务端错误。
+

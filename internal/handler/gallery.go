@@ -10,6 +10,9 @@ import (
 	"gin-quickstart/pkg/response"
 )
 
+// maxURLQueryIDs 批量查询 url 时允许的最大 id 数量。
+const maxURLQueryIDs = 100
+
 // GalleryHandler gallery 接口层。
 type GalleryHandler struct {
 	svc service.GalleryService
@@ -54,6 +57,31 @@ func (h *GalleryHandler) Delete(c *gin.Context) {
 		return
 	}
 	response.OK(c, nil)
+}
+
+// GetURLs 批量根据 id 查询 url，请求体为 {ids: [int64]}，最多 100 个。
+// 返回 id -> url 映射，不存在的 id 不在结果中。
+func (h *GalleryHandler) GetURLs(c *gin.Context) {
+	var req struct {
+		IDs []int64 `json:"ids"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil || len(req.IDs) == 0 || len(req.IDs) > maxURLQueryIDs {
+		response.Fail(c, ecode.InvalidParam)
+		return
+	}
+	for _, id := range req.IDs {
+		if id < 1 {
+			response.Fail(c, ecode.InvalidParam)
+			return
+		}
+	}
+
+	result, err := h.svc.GetURLsByIDs(c.Request.Context(), req.IDs)
+	if err != nil {
+		response.Err(c, err)
+		return
+	}
+	response.OK(c, gin.H{"urls": result})
 }
 
 // ValidateID 校验 id 是否合法，路径参数 :id 为待校验的主键。

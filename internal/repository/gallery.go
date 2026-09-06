@@ -13,6 +13,7 @@ type GalleryRepository interface {
 	ListPage(ctx context.Context, page, pageSize int) ([]entity.Gallery, int64, error)
 	Delete(ctx context.Context, id int64) (int64, error)
 	Exists(ctx context.Context, id int64) (bool, error)
+	GetURLsByIDs(ctx context.Context, ids []int64) (map[int64]string, error)
 }
 
 type galleryRepository struct {
@@ -77,4 +78,46 @@ func (r *galleryRepository) Exists(ctx context.Context, id int64) (bool, error) 
 		"SELECT EXISTS(SELECT 1 FROM gallery WHERE id = ?)", id,
 	).Scan(&exists)
 	return exists, err
+}
+
+// GetURLsByIDs 按 id 批量查询 url，返回 id -> url 映射，不存在的 id 不在结果中。
+func (r *galleryRepository) GetURLsByIDs(ctx context.Context, ids []int64) (map[int64]string, error) {
+	if len(ids) == 0 {
+		return map[int64]string{}, nil
+	}
+
+	query := "SELECT id, url FROM gallery WHERE id IN (" + placeholders(len(ids)) + ")"
+	args := make([]any, len(ids))
+	for i, id := range ids {
+		args[i] = id
+	}
+
+	rows, err := r.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	result := make(map[int64]string, len(ids))
+	for rows.Next() {
+		var id int64
+		var url string
+		if err := rows.Scan(&id, &url); err != nil {
+			return nil, err
+		}
+		result[id] = url
+	}
+	return result, rows.Err()
+}
+
+// placeholders 生成 "?, ?, ..." 占位符，调用方需保证 n > 0。
+func placeholders(n int) string {
+	s := make([]byte, 0, n*2)
+	for i := 0; i < n; i++ {
+		if i > 0 {
+			s = append(s, ',', ' ')
+		}
+		s = append(s, '?')
+	}
+	return string(s)
 }

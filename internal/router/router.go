@@ -1,12 +1,15 @@
 package router
 
 import (
+	"context"
 	"database/sql"
+	"fmt"
 
 	"github.com/gin-gonic/gin"
 	_ "github.com/go-sql-driver/mysql"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 
+	"gin-quickstart/internal/cache"
 	"gin-quickstart/internal/config"
 	"gin-quickstart/internal/handler"
 	"gin-quickstart/internal/middleware"
@@ -26,6 +29,12 @@ func Setup(cfg *config.Config) (*gin.Engine, error) {
 		return nil, err
 	}
 
+	// Redis 缓存：启动时校验连通性，运行期故障由各调用点降级到数据库
+	galleryCache := cache.NewRedis(cfg.Redis.Addr(), cfg.Redis.Password, cfg.Redis.DB)
+	if err := galleryCache.Ping(context.Background()); err != nil {
+		return nil, fmt.Errorf("ping redis: %w", err)
+	}
+
 	r := gin.New()
 	// otelgin 放在最前，保证后续中间件与 handler 都运行在请求 span 内
 	r.Use(otelgin.Middleware(cfg.Telemetry.ServiceName))
@@ -35,12 +44,12 @@ func Setup(cfg *config.Config) (*gin.Engine, error) {
 
 	// 依赖注入：config -> db/provider -> repository/service -> handler
 	galleryRepo := repository.NewGalleryRepository(db)
-	uploadSvc, err := service.NewUploadService(cfg.Storage.Sources, galleryRepo)
+	uploadSvc, err := service.NewUploadService(cfg.Storage.Sources, galleryRepo, galleryCache)
 	if err != nil {
 		return nil, err
 	}
 	uploadHandler := handler.NewUploadHandler(uploadSvc)
-	galleryHandler := handler.NewGalleryHandler(service.NewGalleryService(galleryRepo))
+	galleryHandler := handler.NewGalleryHandler(service.NewGalleryService(galleryRepo, galleryCache, cfg.Redis.TTL))
 
 	// 健康检查
 	r.GET("/ping", func(c *gin.Context) {
@@ -54,6 +63,7 @@ func Setup(cfg *config.Config) (*gin.Engine, error) {
 		api.GET("/gallery", galleryHandler.ListPage)
 		api.DELETE("/gallery/:id", galleryHandler.Delete)
 		api.GET("/gallery/:id/valid", galleryHandler.ValidateID)
+		api.POST("/gallery/urls", galleryHandler.GetURLs)
 	}
 
 	return r, nil
