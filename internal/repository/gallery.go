@@ -11,6 +11,7 @@ import (
 type GalleryRepository interface {
 	Create(ctx context.Context, g *entity.Gallery) (int64, error)
 	ListPage(ctx context.Context, page, pageSize int) ([]entity.Gallery, int64, error)
+	Delete(ctx context.Context, id int64) (int64, error)
 }
 
 type galleryRepository struct {
@@ -57,4 +58,13 @@ func (r *galleryRepository) ListPage(ctx context.Context, page, pageSize int) ([
 		list = append(list, g)
 	}
 	return list, total, rows.Err()
+}
+
+// Delete 按 id 删除单条 gallery 记录，返回受影响行数（0 表示记录不存在）。
+func (r *galleryRepository) Delete(ctx context.Context, id int64) (int64, error) {
+	res, err := r.db.ExecContext(ctx, "DELETE FROM gallery WHERE id = ?", id)
+	if err != nil {
+		return 0, err
+	}
+	return res.RowsAffected()
 }

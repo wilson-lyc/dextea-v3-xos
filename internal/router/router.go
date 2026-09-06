@@ -52,6 +52,7 @@ func Setup(cfg *config.Config) (*gin.Engine, error) {
 		// :source 为存储源名称，对应 configs/config.yaml 中 storage.sources 的 key
 		api.POST("/storage/:source/objects", uploadHandler.Upload)
 		api.GET("/gallery", galleryHandler.ListPage)
+		api.DELETE("/gallery/:id", galleryHandler.Delete)
 	}
 
 	return r, nil

@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 
+	"gin-quickstart/internal/ecode"
 	"gin-quickstart/internal/entity"
 	"gin-quickstart/internal/repository"
 )
@@ -19,6 +20,7 @@ type GalleryPageResult struct {
 // GalleryService gallery 表业务接口。
 type GalleryService interface {
 	ListPage(ctx context.Context, page, pageSize int) (*GalleryPageResult, error)
+	Delete(ctx context.Context, id int64) error
 }
 
 type galleryService struct {
@@ -43,4 +45,16 @@ func (s *galleryService) ListPage(ctx context.Context, page, pageSize int) (*Gal
 		PageSize:   pageSize,
 		TotalPages: totalPages,
 	}, nil
+}
+
+// Delete 按 id 单删 gallery 记录，记录不存在时返回 NotFound 业务错误。
+func (s *galleryService) Delete(ctx context.Context, id int64) error {
+	affected, err := s.repo.Delete(ctx, id)
+	if err != nil {
+		return err
+	}
+	if affected == 0 {
+		return ecode.NotFound
+	}
+	return nil
 }

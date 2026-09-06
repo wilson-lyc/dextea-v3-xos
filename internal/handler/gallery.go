@@ -40,3 +40,18 @@ func (h *GalleryHandler) ListPage(c *gin.Context) {
 	}
 	response.OK(c, result)
 }
+
+// Delete 按 id 单删 gallery 记录，路径参数 :id 为记录主键。
+func (h *GalleryHandler) Delete(c *gin.Context) {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil || id < 1 {
+		response.Fail(c, ecode.InvalidParam)
+		return
+	}
+
+	if err := h.svc.Delete(c.Request.Context(), id); err != nil {
+		response.Err(c, err)
+		return
+	}
+	response.OK(c, nil)
+}
