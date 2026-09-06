@@ -24,6 +24,8 @@ redis:
 
 # 对象存储源：key 为存储源名称，业务方调用上传接口时指定
 storage:
+  max-upload-size: 20971520   # 单文件大小上限（字节），默认 20MB
+  sources:
   sources:
     minio-dev:
       vendor: minio                # minio / aws-s3 / aliyun-oss / tencent-cos / qiniu ...

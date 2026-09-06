@@ -5,10 +5,10 @@
 ## 目录
 
 - [文件上传](./upload.md)
-- [分页查询图库](./gallery/list-gallery.md)
-- [删除图库记录](./gallery/delete-gallery.md)
-- [校验图库 id 是否合法](./gallery/validate-gallery-id.md)
-- [批量根据 id 查询 url](./gallery/get-gallery-urls.md)
+- [分页查询图库](./list.md)
+- [删除图库记录](./delete.md)
+- [校验图库 id 是否合法](./validate.md)
+- [批量根据 id 查询 url](./get-urls.md)
 
 ## 通用约定
 

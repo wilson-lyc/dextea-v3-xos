@@ -59,8 +59,12 @@ func (d DatabaseConfig) DSN() string {
 
 // StorageConfig yml 中 storage 段的结构。
 type StorageConfig struct {
-	Sources map[string]SourceSpec `mapstructure:"sources"`
+	MaxUploadSize int64                 `mapstructure:"max-upload-size"` // 单文件大小上限（字节），0 表示使用默认值
+	Sources       map[string]SourceSpec `mapstructure:"sources"`
 }
+
+// DefaultMaxUploadSize 未配置 max-upload-size 时使用的默认单文件上限（20MB）。
+const DefaultMaxUploadSize int64 = 20 << 20
 
 // SourceSpec 单个对象存储源的配置，统一 S3 协议接入。
 type SourceSpec struct {
@@ -116,6 +120,9 @@ func Load() (*Config, error) {
 	}
 	if len(cfg.Storage.Sources) == 0 {
 		return nil, fmt.Errorf("no storage sources configured")
+	}
+	if cfg.Storage.MaxUploadSize <= 0 {
+		cfg.Storage.MaxUploadSize = DefaultMaxUploadSize
 	}
 	return &cfg, nil
 }

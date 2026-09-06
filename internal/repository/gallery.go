@@ -13,6 +13,7 @@ type GalleryRepository interface {
 	ListPage(ctx context.Context, page, pageSize int) ([]entity.Gallery, int64, error)
 	Delete(ctx context.Context, id int64) (int64, error)
 	Exists(ctx context.Context, id int64) (bool, error)
+	GetByID(ctx context.Context, id int64) (*entity.Gallery, bool, error)
 	GetURLsByIDs(ctx context.Context, ids []int64) (map[int64]string, error)
 }
 
@@ -78,6 +79,21 @@ func (r *galleryRepository) Exists(ctx context.Context, id int64) (bool, error) 
 		"SELECT EXISTS(SELECT 1 FROM gallery WHERE id = ?)", id,
 	).Scan(&exists)
 	return exists, err
+}
+
+// GetByID 按 id 查询单条记录，found 为 false 表示记录不存在。
+func (r *galleryRepository) GetByID(ctx context.Context, id int64) (*entity.Gallery, bool, error) {
+	var g entity.Gallery
+	err := r.db.QueryRowContext(ctx,
+		"SELECT id, source, url, object_key, name, created_at FROM gallery WHERE id = ?", id,
+	).Scan(&g.ID, &g.Source, &g.URL, &g.ObjectKey, &g.Name, &g.CreatedAt)
+	if err == sql.ErrNoRows {
+		return nil, false, nil
+	}
+	if err != nil {
+		return nil, false, err
+	}
+	return &g, true, nil
 }
 
 // GetURLsByIDs 按 id 批量查询 url，返回 id -> url 映射，不存在的 id 不在结果中。

@@ -13,6 +13,7 @@ import (
 	"gin-quickstart/internal/config"
 	"gin-quickstart/internal/handler"
 	"gin-quickstart/internal/middleware"
+	"gin-quickstart/internal/provider"
 	_ "gin-quickstart/internal/provider/s3" // 注册 s3 协议 provider
 	"gin-quickstart/internal/repository"
 	"gin-quickstart/internal/service"
@@ -43,13 +44,17 @@ func Setup(cfg *config.Config) (*gin.Engine, error) {
 	r.NoMethod(middleware.NoMethod())
 
 	// 依赖注入：config -> db/provider -> repository/service -> handler
+	storageManager, err := provider.NewManager(cfg.Storage.Sources)
+	if err != nil {
+		return nil, err
+	}
 	galleryRepo := repository.NewGalleryRepository(db)
-	uploadSvc, err := service.NewUploadService(cfg.Storage.Sources, galleryRepo, galleryCache)
+	uploadSvc, err := service.NewUploadService(storageManager, galleryRepo, galleryCache, cfg.Storage.MaxUploadSize)
 	if err != nil {
 		return nil, err
 	}
 	uploadHandler := handler.NewUploadHandler(uploadSvc)
-	galleryHandler := handler.NewGalleryHandler(service.NewGalleryService(galleryRepo, galleryCache, cfg.Redis.TTL))
+	galleryHandler := handler.NewGalleryHandler(service.NewGalleryService(galleryRepo, storageManager, galleryCache, cfg.Redis.TTL))
 
 	// 健康检查
 	r.GET("/ping", func(c *gin.Context) {

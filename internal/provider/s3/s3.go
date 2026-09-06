@@ -64,6 +64,17 @@ func (c *Client) Upload(ctx context.Context, bucket string, in provider.UploadIn
 	}, nil
 }
 
+// Delete 删除指定 bucket 中的对象，bucket 为空时使用默认 bucket。
+func (c *Client) Delete(ctx context.Context, bucket, objectKey string) error {
+	if bucket == "" {
+		bucket = c.defaultBucket
+	}
+	if bucket == "" {
+		return errors.New("s3 provider: bucket is required")
+	}
+	return c.mc.RemoveObject(ctx, bucket, objectKey, minio.RemoveObjectOptions{})
+}
+
 // EnsureBucket 存在性检查 + 建桶，供服务启动或按需调用。
 func (c *Client) EnsureBucket(ctx context.Context, bucket string) error {
 	exists, err := c.mc.BucketExists(ctx, bucket)

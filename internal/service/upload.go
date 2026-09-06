@@ -1,10 +1,14 @@
 package service
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"path"
 	"time"
+
+	"github.com/gabriel-vasile/mimetype"
 
 	"gin-quickstart/internal/cache"
 	"gin-quickstart/internal/config"
@@ -14,44 +18,49 @@ import (
 	"gin-quickstart/internal/repository"
 )
 
+// allowedImageMimes 允许上传的图片类型白名单，基于文件头嗅探结果判断。
+var allowedImageMimes = map[string]bool{
+	"image/jpeg": true,
+	"image/png":  true,
+	"image/gif":  true,
+	"image/webp": true,
+	"image/bmp":  true,
+}
+
+// sniffSize MIME 嗅探所需读取的字节数（mimetype 官方建议值）。
+const sniffSize = 512
+
 // UploadService 上传业务逻辑层，屏蔽存储源差异。
 type UploadService interface {
 	Upload(ctx context.Context, source, bucket, objectKey string, in provider.UploadInput) (*dto.UploadResp, error)
 }
 
 type uploadService struct {
-	providers   map[string]provider.ObjectProvider // key 为存储源名称
-	specs       map[string]config.SourceSpec
+	manager     *provider.Manager
 	galleryRepo repository.GalleryRepository
 	cache       *cache.Cache // 用于上传落库后失效图库列表缓存
+	maxSize     int64
 }
 
-// NewUploadService 初始化所有存储源的 provider 并绑定图库落库。
-// 协议固定为 s3；后续接入非 S3 协议厂商时，可依据 spec.Vendor/新增协议字段路由到不同 provider。
-func NewUploadService(sources map[string]config.SourceSpec, galleryRepo repository.GalleryRepository, c *cache.Cache) (UploadService, error) {
-	providers := make(map[string]provider.ObjectProvider, len(sources))
-	for name, spec := range sources {
-		// 当前所有源统一走 S3 协议；扩展点：按 spec 声明的协议选择 provider
-		p, err := provider.New("s3", spec)
-		if err != nil {
-			return nil, fmt.Errorf("init storage source %q: %w", name, err)
-		}
-		providers[name] = p
-	}
+// NewUploadService 初始化上传服务并绑定图库落库。
+func NewUploadService(manager *provider.Manager, galleryRepo repository.GalleryRepository, c *cache.Cache, maxSize int64) (UploadService, error) {
 	return &uploadService{
-		providers:   providers,
-		specs:       sources,
+		manager:     manager,
 		galleryRepo: galleryRepo,
 		cache:       c,
+		maxSize:     maxSize,
 	}, nil
 }
 
 func (s *uploadService) Upload(ctx context.Context, source, bucket, objectKey string, in provider.UploadInput) (*dto.UploadResp, error) {
-	p, ok := s.providers[source]
+	p, spec, ok := s.manager.Get(source)
 	if !ok {
 		return nil, ErrUnknownSource(source)
 	}
-	spec := s.specs[source]
+
+	if err := s.validate(&in); err != nil {
+		return nil, err
+	}
 
 	if objectKey == "" {
 		objectKey = generateObjectKey(in.FileName)
@@ -87,6 +96,30 @@ func (s *uploadService) Upload(ctx context.Context, source, bucket, objectKey st
 	}, nil
 }
 
+// validate 校验文件大小与图片类型，嗅探文件头而非信任客户端 Content-Type。
+// 校验通过后把嗅探读出的字节拼回流头部，并回填真实 Content-Type。
+func (s *uploadService) validate(in *provider.UploadInput) error {
+	if s.maxSize > 0 && in.Size > s.maxSize {
+		return ErrFileTooLarge(in.Size, s.maxSize)
+	}
+
+	head := make([]byte, sniffSize)
+	n, err := io.ReadFull(in.Reader, head)
+	if err != nil && err != io.ErrUnexpectedEOF && err != io.EOF {
+		return ErrFileTypeDenied("unreadable")
+	}
+	head = head[:n]
+
+	mtype := mimetype.Detect(head)
+	if !allowedImageMimes[mtype.String()] {
+		return ErrFileTypeDenied(mtype.String())
+	}
+
+	in.Reader = io.MultiReader(bytes.NewReader(head), in.Reader)
+	in.ContentType = mtype.String()
+	return nil
+}
+
 // buildObjectURL 根据存储源配置拼接对象的访问地址。
 func buildObjectURL(spec config.SourceSpec, bucket, objectKey string) string {
 	scheme := "http"
@@ -96,7 +129,7 @@ func buildObjectURL(spec config.SourceSpec, bucket, objectKey string) string {
 	return fmt.Sprintf("%s://%s/%s/%s", scheme, spec.Endpoint, bucket, objectKey)
 }
 
-// generateObjectKey 未指定 object_key 时，按日期 + 时间戳 + 文件名生成，避免覆盖。
+// generateObjectKey 未指定 objectKey 时，按日期 + 时间戳 + 文件名生成，避免覆盖。
 func generateObjectKey(fileName string) string {
 	name := path.Base(fileName)
 	now := time.Now()

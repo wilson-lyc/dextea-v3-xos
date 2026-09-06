@@ -1,6 +1,6 @@
-# 文件上传
+# 图片上传
 
-将文件上传到指定的对象存储源。
+将图片上传到指定的对象存储源。仅允许上传图片文件（jpeg / png / gif / webp / bmp），单文件大小默认上限 20MB。
 
 ## 请求
 
@@ -45,11 +45,13 @@ Content-Type: multipart/form-data
 
 ### 错误
 
-| 状态码 | 场景 | 响应示例 |
+| 状态码 | code | 场景 |
 | --- | --- | --- |
-| 400 | 未携带 `file` 字段 | `{"error": "multipart field 'file' is required"}` |
-| 500 | 存储源名称不存在 | `{"error": "unknown storage source: xxx (check configs/config.yaml)"}` |
-| 500 | 存储服务连接失败 / 上传失败 | `{"error": "upload to source \"xxx\": ..."}` |
+| 400 | 40000 | 未携带 `file` 字段 |
+| 400 | 40011 | 文件超过大小上限（默认 20MB，由配置 `storage.max-upload-size` 控制） |
+| 400 | 40012 | 文件类型不是允许的图片格式（支持 jpeg / png / gif / webp / bmp，基于文件内容检测，伪造扩展名无效） |
+| 404 | 40010 | 存储源名称不存在 |
+| 500 | 50010 | 存储服务连接失败 / 上传失败 |
 
 ## 调用示例
 
@@ -71,8 +73,8 @@ curl -X POST http://localhost:8080/api/v1/storage/minio-dev/objects \
 
 ## 注意事项
 
-1. **`source` 必须是平台已配置的存储源名称**，拼写错误会返回 500 并提示 unknown storage source。
+1. **`source` 必须是平台已配置的存储源名称**，拼写错误会返回 40400 并提示 storage source not found。
 2. 不传 `objectKey` 时系统生成的路径包含纳秒级时间戳，**重复上传同名文件不会被覆盖**；如需覆盖旧文件，请显式传入固定的 `objectKey`。
 3. `objectKey` 中可使用 `/` 分隔多级目录，但请勿以 `/` 开头，也不要包含 `..`。
-4. 请自行评估文件大小限制与业务侧的合法性校验（如文件类型、数量）；平台当前未做类型白名单限制。
+4. 文件类型通过文件头内容检测，伪造扩展名或 Content-Type 无法绕过白名单。
 5. 排查问题时请携带响应头 `X-Request-ID` 联系平台管理员。

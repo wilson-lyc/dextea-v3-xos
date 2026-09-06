@@ -16,3 +16,16 @@ func ErrUnknownSource(source string) error {
 func ErrUploadFailed(source string, err error) error {
 	return ecode.UploadFailed.WithCause(fmt.Errorf("upload to source %q: %w", source, err))
 }
+
+func ErrFileTooLarge(size, limit int64) error {
+	return ecode.FileTooLarge.WithCause(fmt.Errorf("file size %d bytes exceeds limit %d bytes", size, limit))
+}
+
+func ErrFileTypeDenied(mime string) error {
+	return ecode.FileTypeDenied.WithCause(fmt.Errorf("detected mime type %q is not an allowed image type", mime))
+}
+
+func ErrStorageDeleteFailed(source, objectKey string, err error) error {
+	return ecode.DeleteFailed.WithCause(
+		fmt.Errorf("delete object %q from source %q: %w", objectKey, source, err))
+}

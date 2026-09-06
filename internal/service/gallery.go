@@ -9,6 +9,7 @@ import (
 	"gin-quickstart/internal/cache"
 	"gin-quickstart/internal/ecode"
 	"gin-quickstart/internal/entity"
+	"gin-quickstart/internal/provider"
 	"gin-quickstart/internal/repository"
 )
 
@@ -38,6 +39,7 @@ type GalleryService interface {
 type galleryService struct {
 	repo    repository.GalleryRepository
 	cache   *cache.Cache
+	manager *provider.Manager // 删除记录时同步清理对象存储中的文件
 	infoTTL time.Duration
 	listTTL time.Duration
 }
@@ -50,10 +52,11 @@ const (
 	listKeyFmt    = "gallery:list:%d:%d:%d" // ver:page:page_size
 )
 
-func NewGalleryService(repo repository.GalleryRepository, c *cache.Cache, ttl time.Duration) GalleryService {
+func NewGalleryService(repo repository.GalleryRepository, manager *provider.Manager, c *cache.Cache, ttl time.Duration) GalleryService {
 	return &galleryService{
 		repo:    repo,
 		cache:   c,
+		manager: manager,
 		infoTTL: ttl,
 		listTTL: ttl,
 	}
@@ -102,9 +105,27 @@ func (s *galleryService) ListPage(ctx context.Context, page, pageSize int) (*Gal
 	return result, nil
 }
 
-// Delete 按 id 单删 gallery 记录，记录不存在时返回 NotFound 业务错误。
-// 删除成功后失效该记录缓存与列表版本，属于旁路缓存的写后失效。
+// Delete 按 id 删除 gallery 记录，并同步删除对象存储中的文件。
+// 记录不存在时返回 NotFound；对象删除失败时不删记录，保证可重试。
 func (s *galleryService) Delete(ctx context.Context, id int64) error {
+	g, found, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return err
+	}
+	if !found {
+		return ecode.NotFound
+	}
+
+	// 先删对象再删记录：对象删除失败则整体失败，客户端重试时记录仍在
+	if p, _, ok := s.manager.Get(g.Source); ok {
+		if err := p.Delete(ctx, "", g.ObjectKey); err != nil {
+			return ErrStorageDeleteFailed(g.Source, g.ObjectKey, err)
+		}
+	} else {
+		// 存储源已下线等场景：记录仍可删除，孤儿对象留给对账清理
+		fmt.Printf("[WARN] source %q not found, skip object delete, key=%s\n", g.Source, g.ObjectKey)
+	}
+
 	affected, err := s.repo.Delete(ctx, id)
 	if err != nil {
 		return err

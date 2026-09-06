@@ -66,4 +66,7 @@ var (
 var (
 	SourceNotFound = New(http.StatusNotFound, 40010, "storage source not found")
 	UploadFailed   = New(http.StatusInternalServerError, 50010, "upload to storage failed")
+	FileTooLarge   = New(http.StatusBadRequest, 40011, "file size exceeds limit")
+	FileTypeDenied = New(http.StatusBadRequest, 40012, "only image files are allowed")
+	DeleteFailed   = New(http.StatusInternalServerError, 50011, "delete from storage failed")
 )
