@@ -5,6 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	_ "github.com/go-sql-driver/mysql"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 
 	"gin-quickstart/internal/config"
 	"gin-quickstart/internal/handler"
@@ -26,6 +27,8 @@ func Setup(cfg *config.Config) (*gin.Engine, error) {
 	}
 
 	r := gin.New()
+	// otelgin 放在最前，保证后续中间件与 handler 都运行在请求 span 内
+	r.Use(otelgin.Middleware(cfg.Telemetry.ServiceName))
 	r.Use(gin.Logger(), middleware.Recovery(), middleware.RequestID())
 	r.NoRoute(middleware.NoRoute())
 	r.NoMethod(middleware.NoMethod())
@@ -37,6 +40,7 @@ func Setup(cfg *config.Config) (*gin.Engine, error) {
 		return nil, err
 	}
 	uploadHandler := handler.NewUploadHandler(uploadSvc)
+	galleryHandler := handler.NewGalleryHandler(service.NewGalleryService(galleryRepo))
 
 	// 健康检查
 	r.GET("/ping", func(c *gin.Context) {
@@ -47,6 +51,7 @@ func Setup(cfg *config.Config) (*gin.Engine, error) {
 	{
 		// :source 为存储源名称，对应 configs/config.yaml 中 storage.sources 的 key
 		api.POST("/storage/:source/objects", uploadHandler.Upload)
+		api.GET("/gallery", galleryHandler.ListPage)
 	}
 
 	return r, nil

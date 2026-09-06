@@ -10,9 +10,17 @@ import (
 
 // Config 应用全局配置。
 type Config struct {
-	Server   ServerConfig   `mapstructure:"server"`
-	Database DatabaseConfig `mapstructure:"database"`
-	Storage  StorageConfig  `mapstructure:"storage"`
+	Server    ServerConfig    `mapstructure:"server"`
+	Database  DatabaseConfig  `mapstructure:"database"`
+	Storage   StorageConfig   `mapstructure:"storage"`
+	Telemetry TelemetryConfig `mapstructure:"telemetry"`
+}
+
+// TelemetryConfig OpenTelemetry 配置，导出端点走标准 OTEL_EXPORTER_OTLP_ENDPOINT 环境变量
+type TelemetryConfig struct {
+	Enable         bool   `mapstructure:"enable"`
+	ServiceName    string `mapstructure:"service-name"`
+	ServiceVersion string `mapstructure:"service-version"`
 }
 
 type ServerConfig struct {
@@ -78,6 +86,9 @@ func Load() (*Config, error) {
 	var cfg Config
 	if err := v.Unmarshal(&cfg); err != nil {
 		return nil, fmt.Errorf("unmarshal config: %w", err)
+	}
+	if cfg.Telemetry.ServiceName == "" {
+		cfg.Telemetry.ServiceName = "gin-quickstart"
 	}
 	if len(cfg.Storage.Sources) == 0 {
 		return nil, fmt.Errorf("no storage sources configured")

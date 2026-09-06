@@ -1,5 +1,38 @@
-# 应用配置示例，实际配置通过环境变量或复制为 config.yaml 使用
+# 应用配置示例：复制为 configs/config.yaml 使用（config.yaml 已被 gitignore）
+# 配置值支持 ${ENV} 形式的环境变量引用
+
 server:
   host: 0.0.0.0
   port: "8080"
   mode: debug   # debug / release / test
+
+# MySQL 配置（图库表 gallery 所在库）
+database:
+  host: 127.0.0.1
+  port: "3306"
+  user: root
+  password: "123456"
+  name: gin_quickstart
+
+# 对象存储源配置：key 为存储源名称（业务方调用接口时指定），支持配置多个
+# vendor 仅作为标识备注，所有源统一走 S3 协议接入
+storage:
+  sources:
+    minio-dev:
+      vendor: minio                # minio / aws-s3 / aliyun-oss / tencent-cos / qiniu ...
+      endpoint: 127.0.0.1:9000     # 不带 http(s) 前缀
+      region: us-east-1
+      access-key: minioadmin
+      secret-key: minioadmin
+      use-ssl: false
+      default-bucket: gin-quickstart-dev
+
+# OpenTelemetry 链路追踪配置
+# OTLP 导出端点等通过标准 OTEL_* 环境变量配置：
+#   OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318   # OTLP/HTTP endpoint
+#   OTEL_EXPORTER_OTLP_HEADERS=authorization=Bearer xxx # 可选，附加请求头
+#   OTEL_RESOURCE_ATTRIBUTES=deployment.environment=prod # 可选，追加资源属性
+telemetry:
+  enable: true
+  service-name: gin-quickstart      # 留空时默认为 gin-quickstart
+  service-version: 0.1.0
