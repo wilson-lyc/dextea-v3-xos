@@ -11,7 +11,7 @@ import (
 
 // Config 应用全局配置。
 type Config struct {
-	Server    ServerConfig    `mapstructure:"server"`
+	RPC       RPCConfig       `mapstructure:"rpc"`
 	Database  DatabaseConfig  `mapstructure:"database"`
 	Redis     RedisConfig     `mapstructure:"redis"`
 	Storage   StorageConfig   `mapstructure:"storage"`
@@ -38,10 +38,9 @@ type TelemetryConfig struct {
 	ServiceVersion string `mapstructure:"service-version"`
 }
 
-type ServerConfig struct {
+type RPCConfig struct {
 	Host string `mapstructure:"host"`
 	Port string `mapstructure:"port"`
-	Mode string `mapstructure:"mode"`
 }
 
 type DatabaseConfig struct {
@@ -107,7 +106,13 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("unmarshal config: %w", err)
 	}
 	if cfg.Telemetry.ServiceName == "" {
-		cfg.Telemetry.ServiceName = "gin-quickstart"
+		cfg.Telemetry.ServiceName = "dextea-xos"
+	}
+	if cfg.RPC.Host == "" {
+		cfg.RPC.Host = "0.0.0.0"
+	}
+	if cfg.RPC.Port == "" {
+		cfg.RPC.Port = "9091"
 	}
 	if cfg.Redis.Host == "" {
 		cfg.Redis.Host = "127.0.0.1"

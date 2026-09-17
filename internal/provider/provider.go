@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io"
 
-	"gin-quickstart/internal/config"
+	"github.com/wilson-lyc/dextea-v3-xos/internal/config"
 )
 
 // UploadInput 上传请求参数。

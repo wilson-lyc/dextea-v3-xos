@@ -6,11 +6,11 @@ import (
 	"strconv"
 	"time"
 
-	"gin-quickstart/internal/cache"
-	"gin-quickstart/internal/ecode"
-	"gin-quickstart/internal/entity"
-	"gin-quickstart/internal/provider"
-	"gin-quickstart/internal/repository"
+	"github.com/wilson-lyc/dextea-v3-xos/internal/cache"
+	"github.com/wilson-lyc/dextea-v3-xos/internal/ecode"
+	"github.com/wilson-lyc/dextea-v3-xos/internal/entity"
+	"github.com/wilson-lyc/dextea-v3-xos/internal/provider"
+	"github.com/wilson-lyc/dextea-v3-xos/internal/repository"
 )
 
 // GalleryPageResult 分页查询结果。

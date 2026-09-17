@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 
-	"gin-quickstart/internal/entity"
+	"github.com/wilson-lyc/dextea-v3-xos/internal/entity"
 )
 
 // GalleryRepository gallery 表数据访问层。

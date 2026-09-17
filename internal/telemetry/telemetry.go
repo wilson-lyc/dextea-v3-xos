@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
@@ -21,7 +21,7 @@ import (
 //
 // 导出端点等参数遵循官方标准环境变量约定：
 //
-//	OTEL_EXPORTER_OTLP_ENDPOINT      OTLP endpoint，如 http://localhost:4318
+//	OTEL_EXPORTER_OTLP_ENDPOINT      OTLP endpoint，如 localhost:4317
 //	OTEL_EXPORTER_OTLP_HEADERS       附加请求头
 //	OTEL_RESOURCE_ATTRIBUTES         追加资源属性
 func Setup(ctx context.Context, serviceName, serviceVersion string) (shutdown func(context.Context) error, err error) {
@@ -42,8 +42,8 @@ func Setup(ctx context.Context, serviceName, serviceVersion string) (shutdown fu
 		err = joinErr
 	}
 
-	// OTLP HTTP exporter 默认读取 OTEL_EXPORTER_OTLP_ENDPOINT 等环境变量
-	traceExporter, err := otlptracehttp.New(ctx)
+	// OTLP gRPC exporter 默认读取 OTEL_EXPORTER_OTLP_ENDPOINT 等环境变量
+	traceExporter, err := otlptracegrpc.New(ctx)
 	if err != nil {
 		handleErr(fmt.Errorf("create OTLP trace exporter: %w", err))
 		return

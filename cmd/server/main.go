@@ -2,74 +2,116 @@ package main
 
 import (
 	"context"
-	"errors"
+	"database/sql"
+	"fmt"
 	"log"
-	"net/http"
+	"net"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
-	"github.com/gin-gonic/gin"
+	_ "github.com/go-sql-driver/mysql"
 	"github.com/joho/godotenv"
-
-	"gin-quickstart/internal/config"
-	"gin-quickstart/internal/router"
-	"gin-quickstart/internal/telemetry"
+	pb "github.com/wilson-lyc/dextea-v3-proto/gen/go/xos/v1"
+	"github.com/wilson-lyc/dextea-v3-xos/internal/cache"
+	"github.com/wilson-lyc/dextea-v3-xos/internal/config"
+	"github.com/wilson-lyc/dextea-v3-xos/internal/provider"
+	_ "github.com/wilson-lyc/dextea-v3-xos/internal/provider/s3"
+	"github.com/wilson-lyc/dextea-v3-xos/internal/repository"
+	"github.com/wilson-lyc/dextea-v3-xos/internal/rpc"
+	"github.com/wilson-lyc/dextea-v3-xos/internal/service"
+	"github.com/wilson-lyc/dextea-v3-xos/internal/telemetry"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/health"
+	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 )
 
 func main() {
-	// 加载本地 .env（不存在时忽略，部署环境由容器/编排层注入环境变量）
-	if err := godotenv.Load(); err != nil && !os.IsNotExist(err) {
-		log.Printf("load .env: %v", err)
+	if err := run(); err != nil {
+		log.Fatal(err)
 	}
-
+}
+func run() error {
+	if err := godotenv.Load(); err != nil && !os.IsNotExist(err) {
+		return err
+	}
 	cfg, err := config.Load()
 	if err != nil {
-		log.Fatalf("load config: %v", err)
+		return err
 	}
-	gin.SetMode(cfg.Server.Mode)
-
-	// 初始化 OpenTelemetry SDK，退出前 flush 未导出的 span
-	ctx := context.Background()
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
 	if cfg.Telemetry.Enable {
-		otelShutdown, err := telemetry.Setup(ctx, cfg.Telemetry.ServiceName, cfg.Telemetry.ServiceVersion)
+		shutdown, err := telemetry.Setup(ctx, cfg.Telemetry.ServiceName, cfg.Telemetry.ServiceVersion)
 		if err != nil {
-			log.Fatalf("setup otel sdk: %v", err)
+			return err
 		}
 		defer func() {
-			if err := otelShutdown(context.Background()); err != nil {
-				log.Printf("otel shutdown: %v", err)
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			if err := shutdown(ctx); err != nil {
+				log.Printf("telemetry shutdown: %v", err)
 			}
 		}()
 	}
-
-	r, err := router.Setup(cfg)
+	db, err := sql.Open("mysql", cfg.Database.DSN())
 	if err != nil {
-		log.Fatalf("setup router: %v", err)
+		return err
 	}
-
-	srv := &http.Server{
-		Addr:    cfg.Server.Host + ":" + cfg.Server.Port,
-		Handler: r,
-	}
-
-	go func() {
-		log.Printf("listening on %s", srv.Addr)
-		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.Fatalf("failed to start server: %v", err)
-		}
-	}()
-
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
-	log.Println("shutting down server ...")
-
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer db.Close()
+	startup, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
-	if err := srv.Shutdown(shutdownCtx); err != nil {
-		log.Fatalf("server forced to shutdown: %v", err)
+	if err := db.PingContext(startup); err != nil {
+		return err
 	}
-	log.Println("server exiting")
+	c := cache.NewRedis(cfg.Redis.Addr(), cfg.Redis.Password, cfg.Redis.DB)
+	defer c.Close()
+	if err := c.Ping(startup); err != nil {
+		return fmt.Errorf("ping redis: %w", err)
+	}
+	manager, err := provider.NewManager(cfg.Storage.Sources)
+	if err != nil {
+		return err
+	}
+	repo := repository.NewGalleryRepository(db)
+	upload, err := service.NewUploadService(manager, repo, c, cfg.Storage.MaxUploadSize)
+	if err != nil {
+		return err
+	}
+	// Allow protobuf metadata in addition to image bytes; enforce exact image limit in the handler.
+	maxMessage := cfg.Storage.MaxUploadSize + (64 << 10)
+	if maxMessage <= 0 || maxMessage > int64(^uint(0)>>1) {
+		return fmt.Errorf("invalid max upload size")
+	}
+	srv := grpc.NewServer(grpc.MaxRecvMsgSize(int(maxMessage)), grpc.UnaryInterceptor(rpc.UnaryInterceptor), grpc.StatsHandler(otelgrpc.NewServerHandler()))
+	pb.RegisterXOSServiceServer(srv, rpc.NewServer(upload, service.NewGalleryService(repo, manager, c, cfg.Redis.TTL), cfg.Storage.MaxUploadSize))
+	h := health.NewServer()
+	healthpb.RegisterHealthServer(srv, h)
+	h.SetServingStatus("", healthpb.HealthCheckResponse_SERVING)
+	h.SetServingStatus(pb.XOSService_ServiceDesc.ServiceName, healthpb.HealthCheckResponse_SERVING)
+	listener, err := net.Listen("tcp", net.JoinHostPort(cfg.RPC.Host, cfg.RPC.Port))
+	if err != nil {
+		return err
+	}
+	defer listener.Close()
+	errs := make(chan error, 1)
+	go func() { errs <- srv.Serve(listener) }()
+	log.Printf("XOS gRPC listening on %s", listener.Addr())
+	select {
+	case err := <-errs:
+		return err
+	case <-ctx.Done():
+	}
+	h.Shutdown()
+	done := make(chan struct{})
+	go func() { srv.GracefulStop(); close(done) }()
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		srv.Stop()
+		<-done
+	}
+	return nil
 }

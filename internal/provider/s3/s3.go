@@ -9,8 +9,8 @@ import (
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 
-	"gin-quickstart/internal/config"
-	"gin-quickstart/internal/provider"
+	"github.com/wilson-lyc/dextea-v3-xos/internal/config"
+	"github.com/wilson-lyc/dextea-v3-xos/internal/provider"
 )
 
 func init() {

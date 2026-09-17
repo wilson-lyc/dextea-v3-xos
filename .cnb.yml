@@ -14,6 +14,8 @@ $:
         - vscode
         - docker
       stages:
+        - name: 检出共享 RPC 协议
+          script: git clone https://github.com/wilson-lyc/dextea-v3-proto.git ../dextea-proto
         - name: 下载 Go 依赖
           script: go mod download
         - name: 编译校验

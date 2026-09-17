@@ -10,12 +10,12 @@ import (
 
 	"github.com/gabriel-vasile/mimetype"
 
-	"gin-quickstart/internal/cache"
-	"gin-quickstart/internal/config"
-	"gin-quickstart/internal/dto"
-	"gin-quickstart/internal/entity"
-	"gin-quickstart/internal/provider"
-	"gin-quickstart/internal/repository"
+	"github.com/wilson-lyc/dextea-v3-xos/internal/cache"
+	"github.com/wilson-lyc/dextea-v3-xos/internal/config"
+	"github.com/wilson-lyc/dextea-v3-xos/internal/dto"
+	"github.com/wilson-lyc/dextea-v3-xos/internal/entity"
+	"github.com/wilson-lyc/dextea-v3-xos/internal/provider"
+	"github.com/wilson-lyc/dextea-v3-xos/internal/repository"
 )
 
 // allowedImageMimes 允许上传的图片类型白名单，基于文件头嗅探结果判断。
