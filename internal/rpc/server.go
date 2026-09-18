@@ -40,7 +40,7 @@ func (s *Server) Upload(ctx context.Context, r *pb.UploadRequest) (*pb.UploadRes
 	if err != nil {
 		return nil, err
 	}
-	return &pb.UploadResponse{Bucket: out.Bucket, ObjectKey: out.ObjectKey, Size: out.Size, Etag: out.ETag}, nil
+	return &pb.UploadResponse{GalleryId: out.GalleryID, Bucket: out.Bucket, ObjectKey: out.ObjectKey, Size: out.Size, Etag: out.ETag, Url: out.URL, Name: out.Name}, nil
 }
 func (s *Server) ListPage(ctx context.Context, r *pb.ListPageRequest) (*pb.ListPageResponse, error) {
 	if r.GetPage() < 1 || r.GetPageSize() < 1 {
@@ -89,6 +89,19 @@ func (s *Server) GetURLs(ctx context.Context, r *pb.GetURLsRequest) (*pb.GetURLs
 		return nil, err
 	}
 	return &pb.GetURLsResponse{Urls: urls}, nil
+}
+func (s *Server) UpdateName(ctx context.Context, r *pb.UpdateNameRequest) (*pb.Gallery, error) {
+	if r.GetId() < 1 || r.GetName() == "" {
+		return nil, ecode.InvalidParam
+	}
+	g, ok, e := s.gallery.UpdateName(ctx, r.GetId(), r.GetName())
+	if e != nil {
+		return nil, e
+	}
+	if !ok {
+		return nil, ecode.InvalidParam
+	}
+	return &pb.Gallery{Id: g.ID, Source: g.Source, Url: g.URL, ObjectKey: g.ObjectKey, Name: g.Name, CreatedAt: timestamppb.New(g.CreatedAt)}, nil
 }
 
 // UnaryInterceptor converts domain errors without exposing internal causes and recovers panics.

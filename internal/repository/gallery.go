@@ -15,6 +15,19 @@ type GalleryRepository interface {
 	Exists(ctx context.Context, id int64) (bool, error)
 	GetByID(ctx context.Context, id int64) (*entity.Gallery, bool, error)
 	GetURLsByIDs(ctx context.Context, ids []int64) (map[int64]string, error)
+	UpdateName(ctx context.Context, id int64, name string) (*entity.Gallery, bool, error)
+}
+
+func (r *galleryRepository) UpdateName(ctx context.Context, id int64, name string) (*entity.Gallery, bool, error) {
+	res, e := r.db.ExecContext(ctx, "UPDATE gallery SET name=? WHERE id=?", name, id)
+	if e != nil {
+		return nil, false, e
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return nil, false, nil
+	}
+	return r.GetByID(ctx, id)
 }
 
 type galleryRepository struct {

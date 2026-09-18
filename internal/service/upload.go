@@ -72,15 +72,16 @@ func (s *uploadService) Upload(ctx context.Context, source, bucket, objectKey st
 		return nil, ErrUploadFailed(source, err)
 	}
 
-	// 上传成功后写入图库表；落库失败不影响上传结果，仅记录日志
+	// 商品服务需要图库 ID 才能建立 product_images 关联，因此图库落库失败必须让上传失败。
 	url := buildObjectURL(spec, res.Bucket, res.ObjectKey)
-	if _, err := s.galleryRepo.Create(ctx, &entity.Gallery{
+	galleryID, galleryErr := s.galleryRepo.Create(ctx, &entity.Gallery{
 		Source:    source,
 		URL:       url,
 		ObjectKey: res.ObjectKey,
 		Name:      path.Base(in.FileName),
-	}); err != nil {
-		fmt.Printf("[WARN] gallery insert failed, bucket=%s key=%s: %v\n", res.Bucket, res.ObjectKey, err)
+	})
+	if galleryErr != nil {
+		return nil, fmt.Errorf("record uploaded object in gallery: %w", galleryErr)
 	} else {
 		// 旁路缓存的写后失效：新增记录会使分页列表（尤其是首页）过期
 		if err := s.cache.Del(ctx, listVerKey); err != nil {
@@ -89,10 +90,13 @@ func (s *uploadService) Upload(ctx context.Context, source, bucket, objectKey st
 	}
 
 	return &dto.UploadResp{
+		GalleryID: galleryID,
 		Bucket:    res.Bucket,
 		ObjectKey: res.ObjectKey,
 		Size:      res.Size,
 		ETag:      res.ETag,
+		URL:       url,
+		Name:      path.Base(in.FileName),
 	}, nil
 }
 

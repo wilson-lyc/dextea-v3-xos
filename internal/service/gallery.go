@@ -34,6 +34,17 @@ type GalleryService interface {
 	Delete(ctx context.Context, id int64) error
 	ValidateID(ctx context.Context, id int64) (bool, error)
 	GetURLsByIDs(ctx context.Context, ids []int64) (map[int64]string, error)
+	UpdateName(ctx context.Context, id int64, name string) (*entity.Gallery, bool, error)
+}
+
+func (s *galleryService) UpdateName(ctx context.Context, id int64, name string) (*entity.Gallery, bool, error) {
+	g, ok, e := s.repo.UpdateName(ctx, id, name)
+	if e != nil || !ok {
+		return g, ok, e
+	}
+	_ = s.cache.Del(ctx, listVerKey)
+	_ = s.cache.Del(ctx, infoKey(id))
+	return g, true, nil
 }
 
 type galleryService struct {
