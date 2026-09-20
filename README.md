@@ -1,17 +1,19 @@
 # Dextea XOS
 
-图片存储与图库 gRPC 服务，默认监听 `0.0.0.0:9091`。协议位于共享仓库 `dextea-proto/proto/xos/v1/xos.proto`，完整服务名为 `xos.v1.XOSService`。
+图片存储与图库 gRPC 服务，默认监听 `0.0.0.0:15001`。协议位于共享仓库 `dextea-proto/proto/xos/v1/xos.proto`，完整服务名为 `xos.v1.XOSService`。
 
 ## 本地运行
 
 当前新协议尚未发布，`go.mod` 使用相邻目录 `../dextea-proto`，因此构建时两个仓库必须同时存在；独立 CI 也需检出共享协议到该位置。协议发布后可改为正式模块版本并移除 replace。
 
-复制 `configs/config.example.yaml` 为 `configs/config.yaml`，配置 MySQL、Redis 和 S3 存储源；可复制 `.env.example` 为 `.env` 配置环境变量。启动前需准备已有的 gallery 数据表。
+配置文件固定放在 `configs/config.yaml`，可复制 `.env.example` 为 `.env` 注入本地环境变量。配置支持 YAML、项目根目录 `.env` 和系统环境变量，优先级为“系统环境变量 > `.env` > YAML”；也可以通过 `-config` 指定另一份配置文件。启动前需准备已有的 gallery 数据表。
 
 ```sh
-go run ./cmd/server
+go run ./cmd/server -config configs/config.yaml
 go test ./...
 ```
+
+默认监听 `:15001`，并以 `dextea-xos` 为服务名注册到 Nacos。Nacos 关闭或注册失败不会阻止 gRPC 服务启动；调用方在 Nacos 发现失败时可使用自己的静态 fallback。数据库、Redis、对象存储和 Nacos 的环境变量名称详见 `.env.example`。
 
 ## RPC
 
@@ -24,6 +26,6 @@ go test ./...
 
 上传使用 unary RPC。接收消息上限为文件上限加 64 KiB 协议开销，文件上限另行精确校验；调用端如设置了发送限制，也需按上传大小调整。RPC 错误采用标准 gRPC status，业务错误码保存在 `google.rpc.ErrorInfo` 的 reason 字段中。
 
-链路追踪使用 OTLP/gRPC，默认端口 4317；生产环境按部署配置 TLS。进程收到 SIGINT/SIGTERM 后停止健康状态并优雅关闭，最多等待 5 秒。
+进程收到 SIGINT/SIGTERM 后停止健康状态并优雅关闭，最多等待 5 秒。
 
 原 Gin 服务、REST 路由、multipart 上传、HTTP 响应封装和 HTTP 链路导出已移除。S3 SDK 的底层通信和返回给图片消费者的访问 URL 属于对象存储协议，继续保留。

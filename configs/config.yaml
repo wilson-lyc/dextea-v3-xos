@@ -1,0 +1,47 @@
+# dextea-xos 非敏感默认配置。
+# 密码、密钥和 token 请通过 .env、系统环境变量或部署平台 Secret 注入，
+# 不要把真实凭据写入此文件。
+server:
+  addr: ":15001"
+
+mysql:
+  host: "127.0.0.1"
+  port: 20001
+  user: "dextea"
+  password: ""
+  database: "dextea"
+
+redis:
+  host: "127.0.0.1"
+  port: 6379
+  password: ""
+  db: 0
+  gallery-ttl: 10m
+
+# 对象存储源：key 为存储源名称，RPC 调用方上传时指定。
+storage:
+  max-upload-size: 20971520
+  sources:
+    minio-dev:
+      vendor: "minio"
+      endpoint: "127.0.0.1:9000"
+      region: "us-east-1"
+      access-key: ""
+      secret-key: ""
+      use-ssl: false
+      default-bucket: "gin-quickstart-dev"
+
+# 服务注册与发现（nacos-sdk-go/v2）。
+nacos:
+  enabled: true
+  # 可由 .env 或系统环境变量覆盖：NACOS_SERVER_HOST / NACOS_SERVER_PORT
+  server-addr: "127.0.0.1"
+  server-port: 8848
+  namespace-id: ""
+  service-name: "dextea-xos"
+  group-name: "DEFAULT_GROUP"
+  cluster-name: "DEFAULT"
+  weight: 1
+  username: ""
+  password: ""
+  instance-ip: ""

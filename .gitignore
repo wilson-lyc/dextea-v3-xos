@@ -1,5 +1,4 @@
 /bin/
 /tmp/
 *.exe
-configs/config.yaml
 .env
